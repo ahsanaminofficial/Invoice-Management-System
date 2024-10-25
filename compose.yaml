@@ -1,0 +1,66 @@
+services:
+  mongo:
+    image: mongo:7.0
+    restart: always
+    ports:
+      - 27017:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo_data:/data/db
+
+  mongo-express:
+    image: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
+      ME_CONFIG_BASICAUTH: false
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    restart: always
+    hostname: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq  
+  
+  invoice-creation-service:
+    build:
+      context: ./invoice-creation-service
+    restart: always
+    ports:
+      - 3000:3000
+    environment:
+      MONGO_URI: mongodb://root:example@mongo:27017/invoice?authSource=admin
+      RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - mongo
+      - rabbitmq
+
+  email-sender:
+    build:
+      context: ./email-sender
+    restart: always
+    environment:
+      RABBITMQ_URI: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      - mongo
+      - rabbitmq
+
+volumes:
+  mongo_data:
+  rabbitmq_data:
+
+  
